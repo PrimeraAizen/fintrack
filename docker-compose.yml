@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fintrack
+      POSTGRES_PASSWORD: fintrack_secret
+      POSTGRES_DB: fintrack
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fintrack -d fintrack"]
+      interval: 5s
+      timeout: 3s
+      retries 1
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_DATABASE_HOST: postgres
+      APP_DATABASE_PORT: "5432"
+      APP_DATABASE_USERNAME: fintrack
+      APP_DATABASE_PASSWORD: fintrack_secret
+      APP_DATABASE_DATABASE: fintrack
+      APP_DATABASE_SSL_MODE: disable
+      APP_REDIS_ADDR: redis:6379
+      APP_JWT_SECRET: change-me-in-production
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
+  redis_data:

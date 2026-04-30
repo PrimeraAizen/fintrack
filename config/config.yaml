@@ -1,0 +1,37 @@
+http:
+  host: 0.0.0.0
+  port: "8080"
+
+database:
+  host: localhost
+  port: "5432"
+  database: fintrack
+  username: fintrack
+  password: fintrack_secret
+  ssl_mode: disable
+  max_conns: 10
+  min_conns: 1
+
+redis:
+  addr: localhost:6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: change-me-in-production
+  access_ttl: 15m
+  refresh_ttl: 168h
+
+currency:
+  api_url: https://api.exchangerate.host/latest
+  cache_ttl: 1h
+
+logger:
+  level: info
+  format: json
+  output: stdout
+  file_path: ""
+  add_source: false
+  service: fintrack
+  version: "1.0.0"
+  environment: development
