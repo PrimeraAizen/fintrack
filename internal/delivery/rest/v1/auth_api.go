@@ -46,12 +46,15 @@ func (h *Handler) login(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, err.Error(), nil)
 		return
 	}
-	tokens, err := h.services.Auth.Login(c.Request.Context(), req.ToInput())
+	tokens, user, err := h.services.Auth.Login(c.Request.Context(), req.ToInput())
 	if err != nil {
 		response.FromError(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, dto.TokenResponseFrom(tokens))
+	response.Success(c, http.StatusOK, gin.H{
+		"user":   dto.UserResponseFrom(user),
+		"tokens": dto.TokenResponseFrom(tokens),
+	})
 }
 
 func (h *Handler) refresh(c *gin.Context) {

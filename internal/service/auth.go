@@ -38,7 +38,7 @@ type TokenResponse struct {
 
 type Auth interface {
 	Register(ctx context.Context, in RegisterInput) (*TokenResponse, *domain.User, error)
-	Login(ctx context.Context, in LoginInput) (*TokenResponse, error)
+	Login(ctx context.Context, in LoginInput) (*TokenResponse, *domain.User, error)
 	Refresh(ctx context.Context, refreshToken string) (*TokenResponse, error)
 	Logout(ctx context.Context, accessToken string, refreshToken *string) error
 	Me(ctx context.Context, userID uuid.UUID) (*domain.User, error)
@@ -106,23 +106,23 @@ func (s *AuthService) Register(ctx context.Context, in RegisterInput) (*TokenRes
 	return tokenPairToResponse(pair), user, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, in LoginInput) (*TokenResponse, error) {
+func (s *AuthService) Login(ctx context.Context, in LoginInput) (*TokenResponse, *domain.User, error) {
 	email := strings.ToLower(strings.TrimSpace(in.Email))
 	user, err := s.users.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			return nil, domain.ErrInvalidCredentials
+			return nil, nil, domain.ErrInvalidCredentials
 		}
-		return nil, err
+		return nil, nil, err
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(in.Password)); err != nil {
-		return nil, domain.ErrInvalidCredentials
+		return nil, nil, domain.ErrInvalidCredentials
 	}
 	pair, err := s.tokenManager.GeneratePair(user.ID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return tokenPairToResponse(pair), nil
+	return tokenPairToResponse(pair), user, nil
 }
 
 func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*TokenResponse, error) {

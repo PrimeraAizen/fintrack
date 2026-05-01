@@ -39,6 +39,7 @@ func (r UpdateAccountRequest) ToInput() service.UpdateAccountInput {
 
 type AccountResponse struct {
 	ID        uuid.UUID       `json:"id"`
+	UserID    uuid.UUID       `json:"user_id"`
 	Name      string          `json:"name"`
 	Type      string          `json:"type"`
 	Currency  string          `json:"currency"`
@@ -49,6 +50,7 @@ type AccountResponse struct {
 func AccountResponseFrom(a *domain.Account) AccountResponse {
 	return AccountResponse{
 		ID:        a.ID,
+		UserID:    a.UserID,
 		Name:      a.Name,
 		Type:      a.Type,
 		Currency:  a.Currency,
