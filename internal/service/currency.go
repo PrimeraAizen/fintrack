@@ -20,6 +20,7 @@ import (
 
 type Currency interface {
 	GetRate(ctx context.Context, from, to string) (decimal.Decimal, error)
+	GetRateWithMeta(ctx context.Context, from, to string) (*domain.ExchangeRate, error)
 	Convert(ctx context.Context, amount decimal.Decimal, from, to string) (decimal.Decimal, error)
 }
 
@@ -69,6 +70,39 @@ func (s *CurrencyService) GetRate(ctx context.Context, from, to string) (decimal
 	}
 
 	return decimal.Zero, fmt.Errorf("get rate %s->%s: %w", from, to, fetchErr)
+}
+
+func (s *CurrencyService) GetRateWithMeta(ctx context.Context, from, to string) (*domain.ExchangeRate, error) {
+	from = strings.ToUpper(from)
+	to = strings.ToUpper(to)
+
+	// Ensure the rate is current (populates Redis + DB if stale or missing).
+	rate, err := s.GetRate(ctx, from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	// Same currency — synthetic response, no DB row exists.
+	if from == to {
+		return &domain.ExchangeRate{
+			BaseCurrency:   from,
+			TargetCurrency: to,
+			Rate:           rate,
+			CachedAt:       time.Now().UTC(),
+		}, nil
+	}
+
+	er, err := s.rates.Get(ctx, from, to)
+	if err != nil {
+		// Fallback: return the rate we already have without meta.
+		return &domain.ExchangeRate{
+			BaseCurrency:   from,
+			TargetCurrency: to,
+			Rate:           rate,
+			CachedAt:       time.Now().UTC(),
+		}, nil
+	}
+	return er, nil
 }
 
 func (s *CurrencyService) Convert(ctx context.Context, amount decimal.Decimal, from, to string) (decimal.Decimal, error) {

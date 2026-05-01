@@ -55,6 +55,22 @@ func TransactionResponseFrom(t *domain.Transaction) TransactionResponse {
 	}
 }
 
+type UpdateTransactionRequest struct {
+	CategoryID      *uuid.UUID       `json:"category_id"`
+	Amount          *decimal.Decimal `json:"amount"`
+	Note            *string          `json:"note"`
+	TransactionDate *time.Time       `json:"transaction_date"`
+}
+
+func (r UpdateTransactionRequest) ToInput() service.UpdateTransactionInput {
+	return service.UpdateTransactionInput{
+		CategoryID:      r.CategoryID,
+		Amount:          r.Amount,
+		Note:            r.Note,
+		TransactionDate: r.TransactionDate,
+	}
+}
+
 func TransactionListResponseFrom(items []domain.Transaction) []TransactionResponse {
 	out := make([]TransactionResponse, len(items))
 	for i := range items {

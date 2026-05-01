@@ -18,6 +18,7 @@ func (h *Handler) initTransactionRoutes(router *gin.RouterGroup) {
 		tx.POST("", h.createTransaction)
 		tx.GET("", h.listTransactions)
 		tx.GET("/:id", h.getTransaction)
+		tx.PATCH("/:id", h.updateTransaction)
 		tx.DELETE("/:id", h.deleteTransaction)
 	}
 }
@@ -63,6 +64,26 @@ func (h *Handler) getTransaction(c *gin.Context) {
 		return
 	}
 	t, err := h.services.Transaction.Get(c.Request.Context(), userID, id)
+	if err != nil {
+		response.FromError(c, err)
+		return
+	}
+	response.Success(c, http.StatusOK, dto.TransactionResponseFrom(t))
+}
+
+func (h *Handler) updateTransaction(c *gin.Context) {
+	userID, _ := middleware.UserIDFrom(c)
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid id", nil)
+		return
+	}
+	var req dto.UpdateTransactionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, err.Error(), nil)
+		return
+	}
+	t, err := h.services.Transaction.Update(c.Request.Context(), userID, id, req.ToInput())
 	if err != nil {
 		response.FromError(c, err)
 		return

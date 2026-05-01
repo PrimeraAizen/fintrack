@@ -31,6 +31,13 @@ func Auth(tm service.TokenManager) gin.HandlerFunc {
 			return
 		}
 
+		if claims.ID != "" {
+			if blacklisted, _ := tm.IsAccessBlacklisted(c.Request.Context(), claims.ID); blacklisted {
+				response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "token has been revoked", nil)
+				return
+			}
+		}
+
 		c.Set(UserIDKey, claims.UserID)
 		c.Next()
 	}

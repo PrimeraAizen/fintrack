@@ -39,6 +39,8 @@ type TokenManager interface {
 	ParseRefresh(token string) (*Claims, error)
 	RevokeRefresh(ctx context.Context, jti string, expiresAt time.Time) error
 	IsRefreshRevoked(ctx context.Context, jti string) (bool, error)
+	BlacklistAccess(ctx context.Context, jti string, expiresAt time.Time) error
+	IsAccessBlacklisted(ctx context.Context, jti string) (bool, error)
 }
 
 type tokenManager struct {
@@ -56,10 +58,12 @@ func (t *tokenManager) GeneratePair(userID uuid.UUID) (*TokenPair, error) {
 	refreshExp := now.Add(t.cfg.RefreshTTL)
 	refreshJTI := uuid.NewString()
 
+	accessJTI := uuid.NewString()
 	accessTok, err := t.sign(Claims{
 		UserID:    userID,
 		TokenType: tokenTypeAccess,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        accessJTI,
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(accessExp),
 			Subject:   userID.String(),
@@ -143,4 +147,27 @@ func (t *tokenManager) IsRefreshRevoked(ctx context.Context, jti string) (bool, 
 
 func refreshBlacklistKey(jti string) string {
 	return "refresh_blacklist:" + jti
+}
+
+func (t *tokenManager) BlacklistAccess(ctx context.Context, jti string, expiresAt time.Time) error {
+	ttl := time.Until(expiresAt)
+	if ttl <= 0 {
+		return nil
+	}
+	return t.redis.Client.Set(ctx, accessBlacklistKey(jti), "1", ttl).Err()
+}
+
+func (t *tokenManager) IsAccessBlacklisted(ctx context.Context, jti string) (bool, error) {
+	val, err := t.redis.Client.Get(ctx, accessBlacklistKey(jti)).Result()
+	if errors.Is(err, redis.Nil) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return val == "1", nil
+}
+
+func accessBlacklistKey(jti string) string {
+	return "access_blacklist:" + jti
 }

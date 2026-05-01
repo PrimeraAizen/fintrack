@@ -36,10 +36,18 @@ type BudgetUpdater interface {
 	OnTransactionDeletedTx(ctx context.Context, tx pgx.Tx, userID, categoryID uuid.UUID, convertedAmount decimal.Decimal, categoryType string) error
 }
 
+type UpdateTransactionInput struct {
+	CategoryID      *uuid.UUID
+	Amount          *decimal.Decimal
+	Note            *string
+	TransactionDate *time.Time
+}
+
 type Transaction interface {
 	Create(ctx context.Context, userID uuid.UUID, in CreateTransactionInput) (*TransactionResult, error)
 	Get(ctx context.Context, userID, id uuid.UUID) (*domain.Transaction, error)
 	List(ctx context.Context, userID uuid.UUID, filter domain.TransactionFilter) ([]domain.Transaction, int64, error)
+	Update(ctx context.Context, userID, id uuid.UUID, in UpdateTransactionInput) (*domain.Transaction, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	SetBudgetUpdater(b BudgetUpdater)
 }
@@ -163,6 +171,76 @@ func (s *TransactionService) Get(ctx context.Context, userID, id uuid.UUID) (*do
 
 func (s *TransactionService) List(ctx context.Context, userID uuid.UUID, filter domain.TransactionFilter) ([]domain.Transaction, int64, error) {
 	return s.transactions.List(ctx, userID, filter)
+}
+
+func (s *TransactionService) Update(ctx context.Context, userID, id uuid.UUID, in UpdateTransactionInput) (*domain.Transaction, error) {
+	dbTx, err := s.transactions.BeginTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer rollback(ctx, dbTx)
+
+	t, err := s.transactions.GetForUserTx(ctx, dbTx, userID, id)
+	if err != nil {
+		return nil, err
+	}
+
+	oldCategory, err := s.categories.GetByID(ctx, userID, t.CategoryID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply partial updates to the local struct.
+	if in.CategoryID != nil {
+		newCat, err := s.categories.GetByID(ctx, userID, *in.CategoryID)
+		if err != nil {
+			return nil, err
+		}
+		t.CategoryID = newCat.ID
+		oldCategory = newCat // category type may have changed
+	}
+	if in.Note != nil {
+		t.Note = *in.Note
+	}
+	if in.TransactionDate != nil {
+		t.TransactionDate = *in.TransactionDate
+	}
+
+	// If amount changed, recompute converted_amount and update account balance.
+	if in.Amount != nil && !in.Amount.Equal(t.Amount) {
+		if in.Amount.LessThanOrEqual(decimal.Zero) {
+			return nil, fmt.Errorf("%w: amount must be positive", domain.ErrInvalidInput)
+		}
+		user, err := s.users.GetByID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		newConverted := *in.Amount
+		if t.Currency != user.BaseCurrency {
+			converted, err := s.currency.Convert(ctx, *in.Amount, t.Currency, user.BaseCurrency)
+			if err != nil {
+				return nil, fmt.Errorf("convert currency: %w", err)
+			}
+			newConverted = converted
+		}
+		// Reverse old balance effect, apply new balance effect.
+		oldDelta := signedAmount(t.Amount, oldCategory.Type)
+		newDelta := signedAmount(*in.Amount, oldCategory.Type)
+		balanceDelta := newDelta.Sub(oldDelta)
+		if err := s.accounts.UpdateBalance(ctx, dbTx, t.AccountID, balanceDelta); err != nil {
+			return nil, err
+		}
+		t.Amount = *in.Amount
+		t.ConvertedAmount = newConverted
+	}
+
+	if err := s.transactions.UpdateTx(ctx, dbTx, t); err != nil {
+		return nil, err
+	}
+	if err := dbTx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit update transaction: %w", err)
+	}
+	return t, nil
 }
 
 func (s *TransactionService) Delete(ctx context.Context, userID, id uuid.UUID) error {

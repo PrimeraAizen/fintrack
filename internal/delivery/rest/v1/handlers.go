@@ -34,4 +34,5 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 	h.initSavingGoalRoutes(v1)
 	h.initReportRoutes(v1)
 	h.initCSVRoutes(v1)
+	h.initExchangeRateRoutes(v1)
 }

@@ -18,6 +18,7 @@ type Transaction interface {
 	CreateTx(ctx context.Context, tx pgx.Tx, t *domain.Transaction) error
 	GetForUser(ctx context.Context, userID, id uuid.UUID) (*domain.Transaction, error)
 	GetForUserTx(ctx context.Context, tx pgx.Tx, userID, id uuid.UUID) (*domain.Transaction, error)
+	UpdateTx(ctx context.Context, tx pgx.Tx, t *domain.Transaction) error
 	DeleteTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 	List(ctx context.Context, userID uuid.UUID, filter domain.TransactionFilter) ([]domain.Transaction, int64, error)
 }
@@ -87,6 +88,30 @@ func (r *TransactionRepository) queryOne(ctx context.Context, q rowQuerier, user
 		return nil, fmt.Errorf("select transaction: %w", err)
 	}
 	return &t, nil
+}
+
+func (r *TransactionRepository) UpdateTx(ctx context.Context, tx pgx.Tx, t *domain.Transaction) error {
+	query, args, err := r.pg.Builder.
+		Update("transactions").
+		Set("category_id", t.CategoryID).
+		Set("amount", t.Amount).
+		Set("currency", t.Currency).
+		Set("converted_amount", t.ConvertedAmount).
+		Set("note", nullableString(t.Note)).
+		Set("transaction_date", t.TransactionDate).
+		Where(sq.Eq{"id": t.ID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build update transaction: %w", err)
+	}
+	tag, err := tx.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("update transaction: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
 }
 
 func (r *TransactionRepository) DeleteTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {

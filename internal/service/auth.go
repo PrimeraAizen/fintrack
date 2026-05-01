@@ -40,6 +40,7 @@ type Auth interface {
 	Register(ctx context.Context, in RegisterInput) (*TokenResponse, *domain.User, error)
 	Login(ctx context.Context, in LoginInput) (*TokenResponse, error)
 	Refresh(ctx context.Context, refreshToken string) (*TokenResponse, error)
+	Logout(ctx context.Context, accessToken string, refreshToken *string) error
 	Me(ctx context.Context, userID uuid.UUID) (*domain.User, error)
 	TokenManager() TokenManager
 }
@@ -146,6 +147,25 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*TokenR
 		return nil, err
 	}
 	return tokenPairToResponse(pair), nil
+}
+
+func (s *AuthService) Logout(ctx context.Context, accessToken string, refreshToken *string) error {
+	claims, err := s.tokenManager.ParseAccess(accessToken)
+	if err != nil {
+		return domain.ErrInvalidToken
+	}
+	if claims.ID != "" {
+		if err := s.tokenManager.BlacklistAccess(ctx, claims.ID, claims.ExpiresAt.Time); err != nil {
+			return fmt.Errorf("blacklist access token: %w", err)
+		}
+	}
+	if refreshToken != nil && *refreshToken != "" {
+		rc, err := s.tokenManager.ParseRefresh(*refreshToken)
+		if err == nil && rc.ID != "" {
+			_ = s.tokenManager.RevokeRefresh(ctx, rc.ID, rc.ExpiresAt.Time)
+		}
+	}
+	return nil
 }
 
 func (s *AuthService) Me(ctx context.Context, userID uuid.UUID) (*domain.User, error) {

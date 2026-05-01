@@ -2,6 +2,7 @@ package v1
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/diyas/fintrack/internal/delivery/dto"
 	"github.com/diyas/fintrack/internal/delivery/middleware"
@@ -15,6 +16,7 @@ func (h *Handler) initAuthRoutes(router *gin.RouterGroup) {
 		auth.POST("/register", h.register)
 		auth.POST("/login", h.login)
 		auth.POST("/refresh", h.refresh)
+		auth.POST("/logout", middleware.Auth(h.services.Auth.TokenManager()), h.logout)
 		auth.GET("/me", middleware.Auth(h.services.Auth.TokenManager()), h.me)
 	}
 }
@@ -62,6 +64,17 @@ func (h *Handler) refresh(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, dto.TokenResponseFrom(tokens))
+}
+
+func (h *Handler) logout(c *gin.Context) {
+	rawToken := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+	var req dto.LogoutRequest
+	_ = c.ShouldBindJSON(&req) // body is optional
+	if err := h.services.Auth.Logout(c.Request.Context(), rawToken, req.RefreshToken); err != nil {
+		response.FromError(c, err)
+		return
+	}
+	response.Success(c, http.StatusOK, gin.H{"logged_out": true})
 }
 
 func (h *Handler) me(c *gin.Context) {
