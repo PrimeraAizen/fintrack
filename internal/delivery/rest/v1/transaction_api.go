@@ -116,28 +116,28 @@ func parseTransactionFilter(c *gin.Context) (domain.TransactionFilter, error) {
 		PerPage: pageParams.PerPage,
 		Type:    c.Query("type"),
 	}
-	if v := c.Query("account_id"); v != "" {
+	if v := c.Query("account"); v != "" {
 		id, err := uuid.Parse(v)
 		if err != nil {
 			return filter, err
 		}
 		filter.AccountID = &id
 	}
-	if v := c.Query("category_id"); v != "" {
+	if v := c.Query("category"); v != "" {
 		id, err := uuid.Parse(v)
 		if err != nil {
 			return filter, err
 		}
 		filter.CategoryID = &id
 	}
-	if v := c.Query("from_date"); v != "" {
+	if v := c.Query("from"); v != "" {
 		t, err := time.Parse("2006-01-02", v)
 		if err != nil {
 			return filter, err
 		}
 		filter.FromDate = &t
 	}
-	if v := c.Query("to_date"); v != "" {
+	if v := c.Query("to"); v != "" {
 		t, err := time.Parse("2006-01-02", v)
 		if err != nil {
 			return filter, err

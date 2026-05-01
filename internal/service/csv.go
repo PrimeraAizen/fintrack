@@ -30,7 +30,7 @@ type CSVImportSummary struct {
 }
 
 type CSV interface {
-	Export(ctx context.Context, userID uuid.UUID, w io.Writer) error
+	Export(ctx context.Context, userID uuid.UUID, filter domain.TransactionFilter, w io.Writer) error
 	Import(ctx context.Context, userID uuid.UUID, r io.Reader) (*CSVImportSummary, error)
 }
 
@@ -55,7 +55,7 @@ func NewCSVService(
 	}
 }
 
-func (s *CSVService) Export(ctx context.Context, userID uuid.UUID, w io.Writer) error {
+func (s *CSVService) Export(ctx context.Context, userID uuid.UUID, filter domain.TransactionFilter, w io.Writer) error {
 	accounts, err := s.accounts.List(ctx, userID)
 	if err != nil {
 		return err
@@ -83,7 +83,10 @@ func (s *CSVService) Export(ctx context.Context, userID uuid.UUID, w io.Writer) 
 	const pageSize = 500
 	page := 1
 	for {
-		list, _, err := s.txRepo.List(ctx, userID, domain.TransactionFilter{Page: page, PerPage: pageSize})
+		f := filter
+		f.Page = page
+		f.PerPage = pageSize
+		list, _, err := s.txRepo.List(ctx, userID, f)
 		if err != nil {
 			return err
 		}

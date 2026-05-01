@@ -15,7 +15,7 @@ func (h *Handler) initBudgetRoutes(router *gin.RouterGroup) {
 	{
 		budgets.POST("", h.createBudget)
 		budgets.GET("", h.listBudgets)
-		budgets.PUT("/:id", h.updateBudget)
+		budgets.PATCH("/:id", h.updateBudget)
 		budgets.DELETE("/:id", h.deleteBudget)
 	}
 }

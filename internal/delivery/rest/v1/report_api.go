@@ -1,8 +1,8 @@
 package v1
 
 import (
+	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/diyas/fintrack/internal/delivery/dto"
@@ -22,10 +22,10 @@ func (h *Handler) initReportRoutes(router *gin.RouterGroup) {
 func (h *Handler) weeklyReport(c *gin.Context) {
 	userID, _ := middleware.UserIDFrom(c)
 	anchor := time.Now().UTC()
-	if d := c.Query("date"); d != "" {
+	if d := c.Query("weekOf"); d != "" {
 		parsed, err := time.Parse("2006-01-02", d)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid date, expected YYYY-MM-DD", nil)
+			response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid weekOf, expected YYYY-MM-DD", nil)
 			return
 		}
 		anchor = parsed
@@ -43,21 +43,16 @@ func (h *Handler) monthlyReport(c *gin.Context) {
 	now := time.Now().UTC()
 	year := now.Year()
 	month := int(now.Month())
-	if y := c.Query("year"); y != "" {
-		v, err := strconv.Atoi(y)
-		if err != nil {
-			response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid year", nil)
-			return
-		}
-		year = v
-	}
 	if m := c.Query("month"); m != "" {
-		v, err := strconv.Atoi(m)
-		if err != nil || v < 1 || v > 12 {
-			response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid month", nil)
+		// Accept YYYY-MM format.
+		t, err := time.Parse("2006-01", m)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, response.CodeBadRequest,
+				fmt.Sprintf("invalid month %q, expected YYYY-MM", m), nil)
 			return
 		}
-		month = v
+		year = t.Year()
+		month = int(t.Month())
 	}
 	r, err := h.services.Report.Monthly(c.Request.Context(), userID, year, time.Month(month))
 	if err != nil {

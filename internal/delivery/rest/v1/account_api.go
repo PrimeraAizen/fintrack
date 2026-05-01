@@ -16,7 +16,7 @@ func (h *Handler) initAccountRoutes(router *gin.RouterGroup) {
 		accounts.POST("", h.createAccount)
 		accounts.GET("", h.listAccounts)
 		accounts.GET("/:id", h.getAccount)
-		accounts.PUT("/:id", h.updateAccount)
+		accounts.PATCH("/:id", h.updateAccount)
 		accounts.DELETE("/:id", h.deleteAccount)
 	}
 }

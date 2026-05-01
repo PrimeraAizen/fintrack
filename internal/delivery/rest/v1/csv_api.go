@@ -13,16 +13,21 @@ import (
 
 func (h *Handler) initCSVRoutes(router *gin.RouterGroup) {
 	auth := middleware.Auth(h.services.Auth.TokenManager())
-	router.GET("/export/transactions", auth, h.exportTransactions)
-	router.POST("/import/transactions", auth, h.importTransactions)
+	router.GET("/transactions/export", auth, h.exportTransactions)
+	router.POST("/transactions/import", auth, h.importTransactions)
 }
 
 func (h *Handler) exportTransactions(c *gin.Context) {
 	userID, _ := middleware.UserIDFrom(c)
+	filter, err := parseTransactionFilter(c)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, err.Error(), nil)
+		return
+	}
 	filename := fmt.Sprintf("transactions-%s.csv", time.Now().UTC().Format("20060102"))
 	c.Header("Content-Type", "text/csv")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
-	if err := h.services.CSV.Export(c.Request.Context(), userID, c.Writer); err != nil {
+	if err := h.services.CSV.Export(c.Request.Context(), userID, filter, c.Writer); err != nil {
 		response.FromError(c, err)
 		return
 	}

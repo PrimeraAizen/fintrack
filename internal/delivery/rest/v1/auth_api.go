@@ -19,6 +19,8 @@ func (h *Handler) initAuthRoutes(router *gin.RouterGroup) {
 		auth.POST("/logout", middleware.Auth(h.services.Auth.TokenManager()), h.logout)
 		auth.GET("/me", middleware.Auth(h.services.Auth.TokenManager()), h.me)
 	}
+	// Canonical path expected by the iOS bootstrap call.
+	router.GET("/me", middleware.Auth(h.services.Auth.TokenManager()), h.me)
 }
 
 func (h *Handler) register(c *gin.Context) {
