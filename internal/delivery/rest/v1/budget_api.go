@@ -37,7 +37,8 @@ func (h *Handler) createBudget(c *gin.Context) {
 
 func (h *Handler) listBudgets(c *gin.Context) {
 	userID, _ := middleware.UserIDFrom(c)
-	views, err := h.services.Budget.List(c.Request.Context(), userID)
+	period := c.Query("period")
+	views, err := h.services.Budget.List(c.Request.Context(), userID, period)
 	if err != nil {
 		response.FromError(c, err)
 		return

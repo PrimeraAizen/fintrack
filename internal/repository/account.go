@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/diyas/fintrack/internal/domain"
 	postgres "github.com/diyas/fintrack/pkg/adapter"
 	"github.com/google/uuid"
@@ -48,7 +49,7 @@ func (r *AccountRepository) Create(ctx context.Context, a *domain.Account) error
 
 func (r *AccountRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*domain.Account, error) {
 	query, args, err := r.pg.Builder.
-		Select("id", "user_id", "name", "type", "currency", "balance", "created_at").
+		Select("id", "user_id", "name", "type", "currency", "balance", "created_at", "updated_at").
 		From("accounts").
 		Where("id = ? AND user_id = ?", id, userID).
 		ToSql()
@@ -57,7 +58,7 @@ func (r *AccountRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (
 	}
 	var a domain.Account
 	if err := r.pg.Pool.QueryRow(ctx, query, args...).Scan(
-		&a.ID, &a.UserID, &a.Name, &a.Type, &a.Currency, &a.Balance, &a.CreatedAt,
+		&a.ID, &a.UserID, &a.Name, &a.Type, &a.Currency, &a.Balance, &a.CreatedAt, &a.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFound
@@ -69,7 +70,7 @@ func (r *AccountRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (
 
 func (r *AccountRepository) GetByIDTx(ctx context.Context, tx pgx.Tx, userID, id uuid.UUID) (*domain.Account, error) {
 	query, args, err := r.pg.Builder.
-		Select("id", "user_id", "name", "type", "currency", "balance", "created_at").
+		Select("id", "user_id", "name", "type", "currency", "balance", "created_at", "updated_at").
 		From("accounts").
 		Where("id = ? AND user_id = ?", id, userID).
 		Suffix("FOR UPDATE").
@@ -79,7 +80,7 @@ func (r *AccountRepository) GetByIDTx(ctx context.Context, tx pgx.Tx, userID, id
 	}
 	var a domain.Account
 	if err := tx.QueryRow(ctx, query, args...).Scan(
-		&a.ID, &a.UserID, &a.Name, &a.Type, &a.Currency, &a.Balance, &a.CreatedAt,
+		&a.ID, &a.UserID, &a.Name, &a.Type, &a.Currency, &a.Balance, &a.CreatedAt, &a.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFound
@@ -91,7 +92,7 @@ func (r *AccountRepository) GetByIDTx(ctx context.Context, tx pgx.Tx, userID, id
 
 func (r *AccountRepository) List(ctx context.Context, userID uuid.UUID) ([]domain.Account, error) {
 	query, args, err := r.pg.Builder.
-		Select("id", "user_id", "name", "type", "currency", "balance", "created_at").
+		Select("id", "user_id", "name", "type", "currency", "balance", "created_at", "updated_at").
 		From("accounts").
 		Where("user_id = ?", userID).
 		OrderBy("created_at DESC").
@@ -108,7 +109,7 @@ func (r *AccountRepository) List(ctx context.Context, userID uuid.UUID) ([]domai
 	var out []domain.Account
 	for rows.Next() {
 		var a domain.Account
-		if err := rows.Scan(&a.ID, &a.UserID, &a.Name, &a.Type, &a.Currency, &a.Balance, &a.CreatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.UserID, &a.Name, &a.Type, &a.Currency, &a.Balance, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan account: %w", err)
 		}
 		out = append(out, a)
@@ -117,7 +118,9 @@ func (r *AccountRepository) List(ctx context.Context, userID uuid.UUID) ([]domai
 }
 
 func (r *AccountRepository) Update(ctx context.Context, userID, id uuid.UUID, name, accType string) error {
-	builder := r.pg.Builder.Update("accounts").Where("id = ? AND user_id = ?", id, userID)
+	builder := r.pg.Builder.Update("accounts").
+		Set("updated_at", sq.Expr("NOW()")).
+		Where("id = ? AND user_id = ?", id, userID)
 	if name != "" {
 		builder = builder.Set("name", name)
 	}

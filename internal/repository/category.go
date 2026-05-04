@@ -34,12 +34,12 @@ func (r *CategoryRepository) Create(ctx context.Context, c *domain.Category) err
 		Insert("categories").
 		Columns("user_id", "name", "type", "icon").
 		Values(c.UserID, c.Name, c.Type, nullableString(c.Icon)).
-		Suffix("RETURNING id").
+		Suffix("RETURNING id, created_at").
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("build insert category: %w", err)
 	}
-	if err := r.pg.Pool.QueryRow(ctx, query, args...).Scan(&c.ID); err != nil {
+	if err := r.pg.Pool.QueryRow(ctx, query, args...).Scan(&c.ID, &c.CreatedAt); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return domain.ErrConflict
@@ -70,7 +70,7 @@ func (r *CategoryRepository) CreateMany(ctx context.Context, items []domain.Cate
 
 func (r *CategoryRepository) GetByID(ctx context.Context, userID, id uuid.UUID) (*domain.Category, error) {
 	query, args, err := r.pg.Builder.
-		Select("id", "user_id", "name", "type", "COALESCE(icon, '')").
+		Select("id", "user_id", "name", "type", "COALESCE(icon, '')", "created_at").
 		From("categories").
 		Where("id = ? AND user_id = ?", id, userID).
 		ToSql()
@@ -79,7 +79,7 @@ func (r *CategoryRepository) GetByID(ctx context.Context, userID, id uuid.UUID) 
 	}
 	var c domain.Category
 	if err := r.pg.Pool.QueryRow(ctx, query, args...).Scan(
-		&c.ID, &c.UserID, &c.Name, &c.Type, &c.Icon,
+		&c.ID, &c.UserID, &c.Name, &c.Type, &c.Icon, &c.CreatedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFound
@@ -91,7 +91,7 @@ func (r *CategoryRepository) GetByID(ctx context.Context, userID, id uuid.UUID) 
 
 func (r *CategoryRepository) List(ctx context.Context, userID uuid.UUID, typeFilter string) ([]domain.Category, error) {
 	builder := r.pg.Builder.
-		Select("id", "user_id", "name", "type", "COALESCE(icon, '')").
+		Select("id", "user_id", "name", "type", "COALESCE(icon, '')", "created_at").
 		From("categories").
 		Where("user_id = ?", userID).
 		OrderBy("name ASC")
@@ -111,7 +111,7 @@ func (r *CategoryRepository) List(ctx context.Context, userID uuid.UUID, typeFil
 	var out []domain.Category
 	for rows.Next() {
 		var c domain.Category
-		if err := rows.Scan(&c.ID, &c.UserID, &c.Name, &c.Type, &c.Icon); err != nil {
+		if err := rows.Scan(&c.ID, &c.UserID, &c.Name, &c.Type, &c.Icon, &c.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan category: %w", err)
 		}
 		out = append(out, c)

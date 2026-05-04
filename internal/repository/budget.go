@@ -18,7 +18,7 @@ type Budget interface {
 	Create(ctx context.Context, b *domain.Budget) error
 	GetByID(ctx context.Context, userID, id uuid.UUID) (*domain.Budget, error)
 	GetByCategoryTx(ctx context.Context, tx pgx.Tx, userID, categoryID uuid.UUID) (*domain.Budget, error)
-	List(ctx context.Context, userID uuid.UUID) ([]domain.Budget, error)
+	List(ctx context.Context, userID uuid.UUID, period string) ([]domain.Budget, error)
 	Update(ctx context.Context, userID, id uuid.UUID, limit *decimal.Decimal, period string) error
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	UpdateSpentTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, delta decimal.Decimal) error
@@ -78,13 +78,16 @@ func (r *BudgetRepository) GetByCategoryTx(ctx context.Context, tx pgx.Tx, userI
 	return scanBudget(tx.QueryRow(ctx, query, args...))
 }
 
-func (r *BudgetRepository) List(ctx context.Context, userID uuid.UUID) ([]domain.Budget, error) {
-	query, args, err := r.pg.Builder.
+func (r *BudgetRepository) List(ctx context.Context, userID uuid.UUID, period string) ([]domain.Budget, error) {
+	builder := r.pg.Builder.
 		Select("id", "user_id", "category_id", "spending_limit", "period", "spent", "period_start", "created_at").
 		From("budgets").
 		Where("user_id = ?", userID).
-		OrderBy("created_at DESC").
-		ToSql()
+		OrderBy("created_at DESC")
+	if period != "" {
+		builder = builder.Where("period = ?", period)
+	}
+	query, args, err := builder.ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("build list budgets: %w", err)
 	}

@@ -1,6 +1,10 @@
 package domain
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const (
 	CategoryTypeIncome  = "income"
@@ -8,9 +12,10 @@ const (
 )
 
 type Category struct {
-	ID     uuid.UUID `json:"id"`
-	UserID uuid.UUID `json:"user_id"`
-	Name   string    `json:"name"`
-	Type   string    `json:"type"`
-	Icon   string    `json:"icon,omitempty"`
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Name      string    `json:"name"`
+	Type      string    `json:"type"`
+	Icon      string    `json:"icon,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }

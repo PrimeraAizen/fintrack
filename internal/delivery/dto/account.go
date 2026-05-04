@@ -45,6 +45,7 @@ type AccountResponse struct {
 	Currency  string          `json:"currency"`
 	Balance   decimal.Decimal `json:"balance"`
 	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt *time.Time      `json:"updated_at,omitempty"`
 }
 
 func AccountResponseFrom(a *domain.Account) AccountResponse {
@@ -56,6 +57,7 @@ func AccountResponseFrom(a *domain.Account) AccountResponse {
 		Currency:  a.Currency,
 		Balance:   a.Balance,
 		CreatedAt: a.CreatedAt,
+		UpdatedAt: a.UpdatedAt,
 	}
 }
 

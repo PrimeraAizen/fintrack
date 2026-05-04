@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	"github.com/diyas/fintrack/internal/domain"
 	"github.com/diyas/fintrack/internal/service"
 	"github.com/google/uuid"
@@ -33,18 +35,20 @@ func (r UpdateCategoryRequest) ToInput() service.UpdateCategoryInput {
 }
 
 type CategoryResponse struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-	Type string    `json:"type"`
-	Icon string    `json:"icon,omitempty"`
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Type      string    `json:"type"`
+	Icon      string    `json:"icon,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func CategoryResponseFrom(c *domain.Category) CategoryResponse {
 	return CategoryResponse{
-		ID:   c.ID,
-		Name: c.Name,
-		Type: c.Type,
-		Icon: c.Icon,
+		ID:        c.ID,
+		Name:      c.Name,
+		Type:      c.Type,
+		Icon:      c.Icon,
+		CreatedAt: c.CreatedAt,
 	}
 }
 

@@ -22,4 +22,5 @@ type Account struct {
 	Currency  string          `json:"currency"`
 	Balance   decimal.Decimal `json:"balance"`
 	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt *time.Time      `json:"updated_at,omitempty"`
 }

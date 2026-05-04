@@ -32,7 +32,7 @@ type BudgetView struct {
 
 type Budget interface {
 	Create(ctx context.Context, userID uuid.UUID, in CreateBudgetInput) (*domain.Budget, error)
-	List(ctx context.Context, userID uuid.UUID) ([]BudgetView, error)
+	List(ctx context.Context, userID uuid.UUID, period string) ([]BudgetView, error)
 	Update(ctx context.Context, userID, id uuid.UUID, in UpdateBudgetInput) (*domain.Budget, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 
@@ -66,8 +66,8 @@ func (s *BudgetService) Create(ctx context.Context, userID uuid.UUID, in CreateB
 	return b, nil
 }
 
-func (s *BudgetService) List(ctx context.Context, userID uuid.UUID) ([]BudgetView, error) {
-	budgets, err := s.repo.List(ctx, userID)
+func (s *BudgetService) List(ctx context.Context, userID uuid.UUID, period string) ([]BudgetView, error) {
+	budgets, err := s.repo.List(ctx, userID, period)
 	if err != nil {
 		return nil, err
 	}
