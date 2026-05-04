@@ -67,11 +67,13 @@ type rowQuerier interface {
 func (r *TransactionRepository) queryOne(ctx context.Context, q rowQuerier, userID, id uuid.UUID) (*domain.Transaction, error) {
 	query, args, err := r.pg.Builder.
 		Select(
-			"t.id", "t.account_id", "t.category_id", "t.amount", "t.currency",
+			"t.id", "t.account_id", "t.category_id", "c.type",
+			"t.amount", "t.currency",
 			"t.converted_amount", "COALESCE(t.note, '')", "t.transaction_date", "t.created_at",
 		).
 		From("transactions t").
 		Join("accounts a ON a.id = t.account_id").
+		Join("categories c ON c.id = t.category_id").
 		Where(sq.Eq{"t.id": id, "a.user_id": userID}).
 		ToSql()
 	if err != nil {
@@ -79,7 +81,8 @@ func (r *TransactionRepository) queryOne(ctx context.Context, q rowQuerier, user
 	}
 	var t domain.Transaction
 	if err := q.QueryRow(ctx, query, args...).Scan(
-		&t.ID, &t.AccountID, &t.CategoryID, &t.Amount, &t.Currency,
+		&t.ID, &t.AccountID, &t.CategoryID, &t.Type,
+		&t.Amount, &t.Currency,
 		&t.ConvertedAmount, &t.Note, &t.TransactionDate, &t.CreatedAt,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -163,7 +166,8 @@ func (r *TransactionRepository) List(ctx context.Context, userID uuid.UUID, filt
 
 	listBuilder := r.pg.Builder.
 		Select(
-			"t.id", "t.account_id", "t.category_id", "t.amount", "t.currency",
+			"t.id", "t.account_id", "t.category_id", "c.type",
+			"t.amount", "t.currency",
 			"t.converted_amount", "COALESCE(t.note, '')", "t.transaction_date", "t.created_at",
 		).
 		From("transactions t").
@@ -184,11 +188,12 @@ func (r *TransactionRepository) List(ctx context.Context, userID uuid.UUID, filt
 	}
 	defer rows.Close()
 
-	var out []domain.Transaction
+	out := make([]domain.Transaction, 0)
 	for rows.Next() {
 		var t domain.Transaction
 		if err := rows.Scan(
-			&t.ID, &t.AccountID, &t.CategoryID, &t.Amount, &t.Currency,
+			&t.ID, &t.AccountID, &t.CategoryID, &t.Type,
+			&t.Amount, &t.Currency,
 			&t.ConvertedAmount, &t.Note, &t.TransactionDate, &t.CreatedAt,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan transaction: %w", err)

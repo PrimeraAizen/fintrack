@@ -33,6 +33,7 @@ type TransactionResponse struct {
 	ID              uuid.UUID       `json:"id"`
 	AccountID       uuid.UUID       `json:"account_id"`
 	CategoryID      uuid.UUID       `json:"category_id"`
+	Type            string          `json:"type"`
 	Amount          decimal.Decimal `json:"amount"`
 	Currency        string          `json:"currency"`
 	ConvertedAmount decimal.Decimal `json:"converted_amount"`
@@ -46,6 +47,7 @@ func TransactionResponseFrom(t *domain.Transaction) TransactionResponse {
 		ID:              t.ID,
 		AccountID:       t.AccountID,
 		CategoryID:      t.CategoryID,
+		Type:            t.Type,
 		Amount:          t.Amount,
 		Currency:        t.Currency,
 		ConvertedAmount: t.ConvertedAmount,

@@ -11,6 +11,7 @@ type Transaction struct {
 	ID              uuid.UUID       `json:"id"`
 	AccountID       uuid.UUID       `json:"account_id"`
 	CategoryID      uuid.UUID       `json:"category_id"`
+	Type            string          `json:"type"`
 	Amount          decimal.Decimal `json:"amount"`
 	Currency        string          `json:"currency"`
 	ConvertedAmount decimal.Decimal `json:"converted_amount"`

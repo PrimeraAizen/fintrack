@@ -60,7 +60,9 @@ func FromError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, domain.ErrNotFound):
 		Error(c, http.StatusNotFound, CodeNotFound, err.Error(), nil)
-	case errors.Is(err, domain.ErrUnauthorized):
+	case errors.Is(err, domain.ErrUnauthorized),
+		errors.Is(err, domain.ErrInvalidCredentials),
+		errors.Is(err, domain.ErrInvalidToken):
 		Error(c, http.StatusUnauthorized, CodeUnauthorized, err.Error(), nil)
 	case errors.Is(err, domain.ErrForbidden):
 		Error(c, http.StatusForbidden, CodeForbidden, err.Error(), nil)

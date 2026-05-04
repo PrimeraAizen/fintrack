@@ -58,7 +58,7 @@ func (r *ReportRepository) ByCategory(ctx context.Context, userID uuid.UUID, fro
 		return nil, fmt.Errorf("by category query: %w", err)
 	}
 	defer rows.Close()
-	var out []domain.CategoryBreakdown
+	out := make([]domain.CategoryBreakdown, 0)
 	for rows.Next() {
 		var b domain.CategoryBreakdown
 		if err := rows.Scan(&b.CategoryID, &b.CategoryName, &b.CategoryType, &b.Total); err != nil {
@@ -87,7 +87,7 @@ func (r *ReportRepository) DailyTrend(ctx context.Context, userID uuid.UUID, fro
 		return nil, fmt.Errorf("daily trend query: %w", err)
 	}
 	defer rows.Close()
-	var out []domain.DailyTrendPoint
+	out := make([]domain.DailyTrendPoint, 0)
 	for rows.Next() {
 		var p domain.DailyTrendPoint
 		if err := rows.Scan(&p.Date, &p.Income, &p.Expense); err != nil {
